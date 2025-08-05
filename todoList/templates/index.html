@@ -6,6 +6,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         :root {
             --primary-color: #5C6BC0;
@@ -16,6 +17,7 @@
             --completed-text-color: #868E96;
             --alert-color: #FF5252;
             --success-color: #4CAF50;
+            --alarm-color: #FFC107;
         }
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -121,7 +123,14 @@
             border: none;
             cursor: pointer;
             font-size: 13px;
-            padding: 0;
+            padding: 0 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: transform 0.2s ease;
+        }
+        .action-buttons button:hover {
+            transform: scale(1.1);
         }
         .complete-button {
             color: var(--success-color);
@@ -130,18 +139,19 @@
             color: var(--alert-color);
         }
         .alarm-button {
-            color: #FFC107;
+            color: var(--alarm-color);
             position: relative;
         }
         .alarm-options {
             position: absolute;
-            top: 50%;
-            right: 100%;
-            transform: translateY(-50%);
+            top: 0;
+            right: 0;
+            transform: translateX(100%);
             background-color: var(--surface-color);
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             display: flex;
+            flex-direction: column;
             gap: 5px;
             padding: 5px;
             z-index: 10;
@@ -156,6 +166,12 @@
         }
         .alarm-options button:hover {
             background-color: var(--background-color);
+        }
+        .alarm-timer {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--alarm-color);
+            white-space: nowrap;
         }
         #notifications-area {
             position: fixed;
@@ -228,6 +244,7 @@
     <div id="notifications-area"></div>
     <script>
         const notificationArea = document.getElementById('notifications-area');
+        const alarmIntervals = {};
 
         function loadTodos() {
             const storedTodos = JSON.parse(localStorage.getItem('todos_db')) || {};
@@ -264,34 +281,46 @@
             
             // 완료 버튼
             const completeButton = document.createElement('button');
-            completeButton.textContent = '완료';
+            completeButton.innerHTML = `<span class="material-icons">done</span>`;
+            completeButton.title = "완료";
             completeButton.classList.add('complete-button');
-            completeButton.style.display = item.completed ? 'none' : 'inline';
+            completeButton.style.display = item.completed ? 'none' : 'inline-flex';
             completeButton.addEventListener('click', () => {
                 toggleComplete(category, index);
             });
 
-            // 알림 버튼
-            const alarmButton = document.createElement('button');
-            alarmButton.textContent = '알림';
-            alarmButton.classList.add('alarm-button');
-            alarmButton.style.display = item.completed ? 'none' : 'inline';
-            alarmButton.addEventListener('click', (e) => {
-                showAlarmOptions(e.currentTarget, category, index);
-            });
+            // 알림 버튼 또는 타이머
+            if (item.alarmTime && !item.completed) {
+                const timerSpan = document.createElement('span');
+                timerSpan.classList.add('alarm-timer');
+                actionDiv.appendChild(timerSpan);
+                // 타이머는 scheduleAlarm 함수에서 업데이트
+            } else {
+                const alarmButton = document.createElement('button');
+                alarmButton.innerHTML = `<span class="material-icons">alarm</span>`;
+                alarmButton.title = "알림 설정";
+                alarmButton.classList.add('alarm-button');
+                alarmButton.style.display = item.completed ? 'none' : 'inline-flex';
+                alarmButton.addEventListener('click', (e) => {
+                    showAlarmOptions(e.currentTarget, category, index);
+                });
+                actionDiv.appendChild(alarmButton);
+            }
 
             // 삭제 버튼
             const deleteButton = document.createElement('button');
-            deleteButton.textContent = '삭제';
+            deleteButton.innerHTML = `<span class="material-icons">delete</span>`;
+            deleteButton.title = "삭제";
             deleteButton.classList.add('delete-button');
-            deleteButton.style.display = item.completed ? 'inline' : 'none';
+            deleteButton.style.display = item.completed ? 'inline-flex' : 'none';
             deleteButton.addEventListener('click', () => {
                 deleteTodo(category, index);
             });
             
             actionDiv.appendChild(completeButton);
-            actionDiv.appendChild(alarmButton);
-            actionDiv.appendChild(deleteButton);
+            if (!item.alarmTime || item.completed) {
+                actionDiv.appendChild(deleteButton);
+            }
             todoItem.appendChild(textSpan);
             todoItem.appendChild(actionDiv);
 
@@ -312,7 +341,8 @@
             const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
             if (storedTodos && storedTodos[category] && storedTodos[category][index]) {
                 storedTodos[category][index].completed = true;
-                storedTodos[category][index].alarmTime = null; // 완료되면 알림도 취소
+                storedTodos[category][index].alarmTime = null;
+                clearInterval(alarmIntervals[`${category}-${index}`]);
                 localStorage.setItem('todos_db', JSON.stringify(storedTodos));
                 loadTodos();
             }
@@ -323,12 +353,12 @@
             if (storedTodos && storedTodos[category]) {
                 storedTodos[category].splice(index, 1);
                 localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+                clearInterval(alarmIntervals[`${category}-${index}`]);
                 loadTodos();
             }
         }
 
         function showAlarmOptions(button, category, index) {
-            // 다른 알림 옵션이 열려있으면 닫기
             document.querySelectorAll('.alarm-options').forEach(options => options.remove());
 
             const optionsDiv = document.createElement('div');
@@ -359,34 +389,45 @@
             if (storedTodos && storedTodos[category] && storedTodos[category][index]) {
                 storedTodos[category][index].alarmTime = alarmTime;
                 localStorage.setItem('todos_db', JSON.stringify(storedTodos));
-                loadTodos(); // 알림 설정 후 UI 업데이트
+                loadTodos();
             }
         }
         
-        const scheduledAlarms = {}; // 알림 타이머를 저장할 객체
-
         function scheduleAlarm(taskText, alarmTime, category, index) {
             const now = new Date().getTime();
             const alarmDate = new Date(alarmTime).getTime();
-            const timeToAlarm = alarmDate - now;
+            let timeToAlarm = alarmDate - now;
 
-            if (timeToAlarm > 0) {
-                // 기존 타이머가 있으면 취소
-                if (scheduledAlarms[`${category}-${index}`]) {
-                    clearTimeout(scheduledAlarms[`${category}-${index}`]);
-                }
+            if (timeToAlarm <= 0) {
+                showNotification(taskText);
+                const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
+                storedTodos[category][index].alarmTime = null;
+                localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+                loadTodos();
+                return;
+            }
+
+            const timerId = setInterval(() => {
+                const remaining = new Date(alarmDate - new Date().getTime());
+                const minutes = Math.floor(remaining / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
                 
-                // 새로운 타이머 설정
-                const timerId = setTimeout(() => {
+                const timerElement = document.querySelector(`#${category}-list > li:nth-child(${index + 1}) .alarm-timer`);
+                if (timerElement) {
+                    timerElement.textContent = `${minutes}분 ${seconds}초`;
+                }
+
+                if (remaining <= 0) {
+                    clearInterval(alarmIntervals[`${category}-${index}`]);
                     showNotification(taskText);
-                    // 알림이 울린 후에는 알람 시간 초기화
                     const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
                     storedTodos[category][index].alarmTime = null;
                     localStorage.setItem('todos_db', JSON.stringify(storedTodos));
                     loadTodos();
-                }, timeToAlarm);
-                scheduledAlarms[`${category}-${index}`] = timerId;
-            }
+                }
+            }, 1000);
+
+            alarmIntervals[`${category}-${index}`] = timerId;
         }
 
         function showNotification(message) {
