@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>개발자 To-Do List</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #5C6BC0;
+            --background-color: #F8F9FA;
+            --surface-color: #FFFFFF;
+            --border-color: #E0E0E0;
+            --text-color: #343A40;
+            --completed-text-color: #868E96;
+            --alert-color: #FF5252;
+            --success-color: #4CAF50;
+        }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .main-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+        .category-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .category-box {
+            background-color: var(--surface-color);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+        .category-box h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+        form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .add-button {
+            padding: 8px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .add-button:hover {
+            background-color: #4B5CA7;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        li {
+            background-color: var(--background-color);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            word-break: break-all;
+            position: relative;
+        }
+        li:last-child {
+            margin-bottom: 0;
+        }
+        .todo-text {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        .todo-text.completed {
+            text-decoration: line-through;
+            color: var(--completed-text-color);
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        .action-buttons button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 0;
+        }
+        .complete-button {
+            color: var(--success-color);
+        }
+        .delete-button {
+            color: var(--alert-color);
+        }
+        .alarm-button {
+            color: #FFC107;
+            position: relative;
+        }
+        .alarm-options {
+            position: absolute;
+            top: 50%;
+            right: 100%;
+            transform: translateY(-50%);
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            display: flex;
+            gap: 5px;
+            padding: 5px;
+            z-index: 10;
+        }
+        .alarm-options button {
+            background: none;
+            border: 1px solid var(--border-color);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .alarm-options button:hover {
+            background-color: var(--background-color);
+        }
+        #notifications-area {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .notification-item {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .notification-item span {
+            flex-grow: 1;
+        }
+        .notification-item button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding-left: 10px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>나만의 To-Do List 📝</h1>
+        <div class="category-container">
+            <div class="category-box">
+                <h2>반영</h2>
+                <form class="todo-form" data-category="반영">
+                    <input type="text" name="task" placeholder="할 일 입력" required>
+                    <button type="submit" class="add-button">추가</button>
+                </form>
+                <ul id="반영-list"></ul>
+            </div>
+            <div class="category-box">
+                <h2>가맹점문의</h2>
+                <form class="todo-form" data-category="가맹점문의">
+                    <input type="text" name="task" placeholder="할 일 입력" required>
+                    <button type="submit" class="add-button">추가</button>
+                </form>
+                <ul id="가맹점문의-list"></ul>
+            </div>
+            <div class="category-box">
+                <h2>기타</h2>
+                <form class="todo-form" data-category="기타">
+                    <input type="text" name="task" placeholder="할 일 입력" required>
+                    <button type="submit" class="add-button">추가</button>
+                </form>
+                <ul id="기타-list"></ul>
+            </div>
+        </div>
+    </div>
+    <div id="notifications-area"></div>
+    <script>
+        const notificationArea = document.getElementById('notifications-area');
+
+        function loadTodos() {
+            const storedTodos = JSON.parse(localStorage.getItem('todos_db')) || {};
+            const categories = ['반영', '가맹점문의', '기타'];
+
+            categories.forEach(category => {
+                const listElement = document.getElementById(`${category}-list`);
+                const tasks = storedTodos[category] || [];
+                listElement.innerHTML = '';
+
+                tasks.forEach((item, index) => {
+                    const todoItem = createTodoElement(item, category, index);
+                    listElement.appendChild(todoItem);
+
+                    if (item.alarmTime && !item.completed) {
+                        scheduleAlarm(item.text, item.alarmTime, category, index);
+                    }
+                });
+            });
+        }
+
+        function createTodoElement(item, category, index) {
+            const todoItem = document.createElement('li');
+            
+            const textSpan = document.createElement('span');
+            textSpan.classList.add('todo-text');
+            textSpan.textContent = item.text;
+            if (item.completed) {
+                textSpan.classList.add('completed');
+            }
+
+            const actionDiv = document.createElement('div');
+            actionDiv.classList.add('action-buttons');
+            
+            // 완료 버튼
+            const completeButton = document.createElement('button');
+            completeButton.textContent = '완료';
+            completeButton.classList.add('complete-button');
+            completeButton.style.display = item.completed ? 'none' : 'inline';
+            completeButton.addEventListener('click', () => {
+                toggleComplete(category, index);
+            });
+
+            // 알림 버튼
+            const alarmButton = document.createElement('button');
+            alarmButton.textContent = '알림';
+            alarmButton.classList.add('alarm-button');
+            alarmButton.style.display = item.completed ? 'none' : 'inline';
+            alarmButton.addEventListener('click', (e) => {
+                showAlarmOptions(e.currentTarget, category, index);
+            });
+
+            // 삭제 버튼
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '삭제';
+            deleteButton.classList.add('delete-button');
+            deleteButton.style.display = item.completed ? 'inline' : 'none';
+            deleteButton.addEventListener('click', () => {
+                deleteTodo(category, index);
+            });
+            
+            actionDiv.appendChild(completeButton);
+            actionDiv.appendChild(alarmButton);
+            actionDiv.appendChild(deleteButton);
+            todoItem.appendChild(textSpan);
+            todoItem.appendChild(actionDiv);
+
+            return todoItem;
+        }
+
+        function addTodo(category, task) {
+            const storedTodos = JSON.parse(localStorage.getItem('todos_db')) || {};
+            if (!storedTodos[category]) {
+                storedTodos[category] = [];
+            }
+            storedTodos[category].unshift({ text: task, completed: false, alarmTime: null });
+            localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+            loadTodos();
+        }
+
+        function toggleComplete(category, index) {
+            const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
+            if (storedTodos && storedTodos[category] && storedTodos[category][index]) {
+                storedTodos[category][index].completed = true;
+                storedTodos[category][index].alarmTime = null; // 완료되면 알림도 취소
+                localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+                loadTodos();
+            }
+        }
+
+        function deleteTodo(category, index) {
+            const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
+            if (storedTodos && storedTodos[category]) {
+                storedTodos[category].splice(index, 1);
+                localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+                loadTodos();
+            }
+        }
+
+        function showAlarmOptions(button, category, index) {
+            // 다른 알림 옵션이 열려있으면 닫기
+            document.querySelectorAll('.alarm-options').forEach(options => options.remove());
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.classList.add('alarm-options');
+
+            const times = [
+                { text: '5분 뒤', minutes: 5 },
+                { text: '30분 뒤', minutes: 30 },
+                { text: '1시간 뒤', minutes: 60 }
+            ];
+
+            times.forEach(time => {
+                const optionButton = document.createElement('button');
+                optionButton.textContent = time.text;
+                optionButton.addEventListener('click', () => {
+                    const alarmDate = new Date(new Date().getTime() + time.minutes * 60000);
+                    setAlarm(category, index, alarmDate.toISOString());
+                    optionsDiv.remove();
+                });
+                optionsDiv.appendChild(optionButton);
+            });
+
+            button.parentElement.appendChild(optionsDiv);
+        }
+
+        function setAlarm(category, index, alarmTime) {
+            const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
+            if (storedTodos && storedTodos[category] && storedTodos[category][index]) {
+                storedTodos[category][index].alarmTime = alarmTime;
+                localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+                loadTodos(); // 알림 설정 후 UI 업데이트
+            }
+        }
+        
+        const scheduledAlarms = {}; // 알림 타이머를 저장할 객체
+
+        function scheduleAlarm(taskText, alarmTime, category, index) {
+            const now = new Date().getTime();
+            const alarmDate = new Date(alarmTime).getTime();
+            const timeToAlarm = alarmDate - now;
+
+            if (timeToAlarm > 0) {
+                // 기존 타이머가 있으면 취소
+                if (scheduledAlarms[`${category}-${index}`]) {
+                    clearTimeout(scheduledAlarms[`${category}-${index}`]);
+                }
+                
+                // 새로운 타이머 설정
+                const timerId = setTimeout(() => {
+                    showNotification(taskText);
+                    // 알림이 울린 후에는 알람 시간 초기화
+                    const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
+                    storedTodos[category][index].alarmTime = null;
+                    localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+                    loadTodos();
+                }, timeToAlarm);
+                scheduledAlarms[`${category}-${index}`] = timerId;
+            }
+        }
+
+        function showNotification(message) {
+            const notificationDiv = document.createElement('div');
+            notificationDiv.classList.add('notification-item');
+            notificationDiv.innerHTML = `
+                <span>🚨 알림: ${message}</span>
+                <button onclick="this.parentElement.remove()">×</button>
+            `;
+            notificationArea.prepend(notificationDiv);
+        }
+
+        document.querySelectorAll('.todo-form').forEach(form => {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const category = this.dataset.category;
+                const taskInput = this.querySelector('input[name="task"]');
+                const task = taskInput.value;
+                
+                if (!task) return;
+
+                addTodo(category, task);
+                taskInput.value = '';
+            });
+        });
+
+        loadTodos();
+    </script>
+</body>
+</html>
