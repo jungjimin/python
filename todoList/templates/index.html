@@ -279,7 +279,6 @@
             const actionDiv = document.createElement('div');
             actionDiv.classList.add('action-buttons');
             
-            // 완료 버튼
             const completeButton = document.createElement('button');
             completeButton.innerHTML = `<span class="material-icons">done</span>`;
             completeButton.title = "완료";
@@ -289,12 +288,10 @@
                 toggleComplete(category, index);
             });
 
-            // 알림 버튼 또는 타이머
             if (item.alarmTime && !item.completed) {
                 const timerSpan = document.createElement('span');
                 timerSpan.classList.add('alarm-timer');
                 actionDiv.appendChild(timerSpan);
-                // 타이머는 scheduleAlarm 함수에서 업데이트
             } else {
                 const alarmButton = document.createElement('button');
                 alarmButton.innerHTML = `<span class="material-icons">alarm</span>`;
@@ -307,7 +304,6 @@
                 actionDiv.appendChild(alarmButton);
             }
 
-            // 삭제 버튼
             const deleteButton = document.createElement('button');
             deleteButton.innerHTML = `<span class="material-icons">delete</span>`;
             deleteButton.title = "삭제";
@@ -365,7 +361,7 @@
             optionsDiv.classList.add('alarm-options');
 
             const times = [
-                { text: '5분 뒤', minutes: 5 },
+                { text: '5초 뒤', seconds: 5 },
                 { text: '30분 뒤', minutes: 30 },
                 { text: '1시간 뒤', minutes: 60 }
             ];
@@ -374,7 +370,12 @@
                 const optionButton = document.createElement('button');
                 optionButton.textContent = time.text;
                 optionButton.addEventListener('click', () => {
-                    const alarmDate = new Date(new Date().getTime() + time.minutes * 60000);
+                    let alarmDate;
+                    if (time.seconds) {
+                        alarmDate = new Date(new Date().getTime() + time.seconds * 1000);
+                    } else {
+                        alarmDate = new Date(new Date().getTime() + time.minutes * 60000);
+                    }
                     setAlarm(category, index, alarmDate.toISOString());
                     optionsDiv.remove();
                 });
@@ -396,41 +397,41 @@
         function scheduleAlarm(taskText, alarmTime, category, index) {
             const now = new Date().getTime();
             const alarmDate = new Date(alarmTime).getTime();
-            let timeToAlarm = alarmDate - now;
+            const timeToAlarm = alarmDate - now;
 
-            if (timeToAlarm <= 0) {
-                showNotification(taskText);
-                const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
-                storedTodos[category][index].alarmTime = null;
-                localStorage.setItem('todos_db', JSON.stringify(storedTodos));
-                loadTodos();
+            if (timeToAlarm <= 1000) {
+                showNotification(taskText, category, index);
                 return;
             }
 
+            if (alarmIntervals[`${category}-${index}`]) {
+                clearInterval(alarmIntervals[`${category}-${index}`]);
+            }
+            
             const timerId = setInterval(() => {
-                const remaining = new Date(alarmDate - new Date().getTime());
+                const remaining = alarmDate - new Date().getTime();
                 const minutes = Math.floor(remaining / 60000);
                 const seconds = Math.floor((remaining % 60000) / 1000);
                 
                 const timerElement = document.querySelector(`#${category}-list > li:nth-child(${index + 1}) .alarm-timer`);
                 if (timerElement) {
-                    timerElement.textContent = `${minutes}분 ${seconds}초`;
+                    if (minutes > 0) {
+                        timerElement.textContent = `${minutes}분 ${seconds}초`;
+                    } else {
+                        timerElement.textContent = `${seconds}초`;
+                    }
                 }
 
                 if (remaining <= 0) {
                     clearInterval(alarmIntervals[`${category}-${index}`]);
-                    showNotification(taskText);
-                    const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
-                    storedTodos[category][index].alarmTime = null;
-                    localStorage.setItem('todos_db', JSON.stringify(storedTodos));
-                    loadTodos();
+                    showNotification(taskText, category, index);
                 }
             }, 1000);
 
             alarmIntervals[`${category}-${index}`] = timerId;
         }
 
-        function showNotification(message) {
+        function showNotification(message, category, index) {
             const notificationDiv = document.createElement('div');
             notificationDiv.classList.add('notification-item');
             notificationDiv.innerHTML = `
@@ -438,6 +439,13 @@
                 <button onclick="this.parentElement.remove()">×</button>
             `;
             notificationArea.prepend(notificationDiv);
+            
+            const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
+            if (storedTodos && storedTodos[category] && storedTodos[category][index]) {
+                storedTodos[category][index].alarmTime = null;
+                localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+                loadTodos();
+            }
         }
 
         document.querySelectorAll('.todo-form').forEach(form => {
