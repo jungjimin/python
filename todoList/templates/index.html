@@ -224,12 +224,12 @@
                 <ul id="반영-list"></ul>
             </div>
             <div class="category-box">
-                <h2>가맹점문의</h2>
-                <form class="todo-form" data-category="가맹점문의">
+                <h2>문의</h2>
+                <form class="todo-form" data-category="문의">
                     <input type="text" name="task" placeholder="할 일 입력" required>
                     <button type="submit" class="add-button">추가</button>
                 </form>
-                <ul id="가맹점문의-list"></ul>
+                <ul id="문의-list"></ul>
             </div>
             <div class="category-box">
                 <h2>기타</h2>
@@ -248,7 +248,7 @@
 
         function loadTodos() {
             const storedTodos = JSON.parse(localStorage.getItem('todos_db')) || {};
-            const categories = ['반영', '가맹점문의', '기타'];
+            const categories = ['반영', '문의', '기타'];
 
             categories.forEach(category => {
                 const listElement = document.getElementById(`${category}-list`);
@@ -308,15 +308,12 @@
             deleteButton.innerHTML = `<span class="material-icons">delete</span>`;
             deleteButton.title = "삭제";
             deleteButton.classList.add('delete-button');
-            deleteButton.style.display = item.completed ? 'inline-flex' : 'none';
             deleteButton.addEventListener('click', () => {
                 deleteTodo(category, index);
             });
             
             actionDiv.appendChild(completeButton);
-            if (!item.alarmTime || item.completed) {
-                actionDiv.appendChild(deleteButton);
-            }
+            actionDiv.appendChild(deleteButton);
             todoItem.appendChild(textSpan);
             todoItem.appendChild(actionDiv);
 

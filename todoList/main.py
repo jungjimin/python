@@ -35,3 +35,5 @@ async def add_todo(todo: TodoItem):
     
     todos_db[todo.category].insert(0, todo.task)  # 최신 항목을 맨 앞에 추가
     return todo
+
+# 실행명령어 : uvicorn main:app --reload
