@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>To-Do List</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              pastelBlue: '#cce2f7',
+              pastelPurple: '#e1d7f6',
+              pastelYellow: '#fff7d6',
+              pastelGreen: '#d6f7e1',
+              pastelRed: '#ffd6d6',
+              pastelGray: '#f5f7fa',
+              pastelDarkBlue: '#7fa7d6',
+              pastelDarkRed: '#f28b82',
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-pastelGray min-h-screen font-sans">
+    <header class="bg-pastelBlue text-gray-700 py-8 text-center shadow">
+        <h1 class="text-3xl font-bold">To-Do List</h1>
+    </header>
+    <main class="max-w-xl mx-auto bg-white rounded-xl shadow-lg p-6 mt-8
+                 flex flex-col gap-6
+                 sm:p-8 sm:mt-12
+                 ">
+        <form id="todo-form" class="flex flex-col sm:flex-row gap-3">
+            <input type="text" id="task-input" placeholder="새 작업 추가..." 
+                class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pastelBlue transition" />
+            <button type="submit"
+                class="bg-pastelGreen text-gray-700 font-semibold rounded-lg px-6 py-3 hover:bg-pastelBlue transition">
+                추가
+            </button>
+        </form>
+        <ul id="task-list" class="mt-2 list-none p-0"></ul>
+    </main>
+    <script>
+        // 반응형: 모바일에서 입력창과 버튼이 세로로, 데스크탑에서는 가로로 배치됨
+        const form = document.getElementById('todo-form');
+        const taskInput = document.getElementById('task-input');
+        const taskList = document.getElementById('task-list');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const taskText = taskInput.value.trim();
+            if (taskText) {
+                addTask(taskText);
+                taskInput.value = '';
+            }
+        });
+
+        function addTask(text) {
+            const li = document.createElement('li');
+            li.className = "bg-pastelYellow my-2 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm";
+            const span = document.createElement('span');
+            span.textContent = text;
+            span.className = "text-gray-700";
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = '삭제';
+            removeBtn.className = "bg-pastelRed text-gray-700 rounded-md px-4 py-2 ml-4 hover:bg-pastelDarkRed transition";
+            removeBtn.addEventListener('click', function() {
+                li.remove();
+            });
+            li.appendChild(span);
+            li.appendChild(removeBtn);
+            taskList.appendChild(li);
+        }
+    </script>
+</body>
+</html>

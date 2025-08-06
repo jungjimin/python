@@ -1,0 +1,26 @@
+{
+  "name": "todo-list-app",
+  "version": "1.0.0",
+  "description": "A simple To-Do List application using Tailwind CSS with a pastel color theme.",
+  "main": "src/todo.html",
+  "scripts": {
+    "build": "tailwindcss build src/styles/tailwind.css -o dist/styles.css",
+    "watch": "tailwindcss build src/styles/tailwind.css -o dist/styles.css --watch",
+    "start": "live-server"
+  },
+  "dependencies": {
+    "tailwindcss": "^2.2.19"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  },
+  "keywords": [
+    "todo",
+    "list",
+    "application",
+    "tailwindcss",
+    "pastel"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

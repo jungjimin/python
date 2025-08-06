@@ -1,0 +1,114 @@
+<!-- 파일명: demo.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>HTML5 데모 페이지</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', Arial, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: #3F51B5;
+            color: white;
+            padding: 24px 0;
+            text-align: center;
+        }
+        nav {
+            background: #e3e6ee;
+            padding: 10px 0;
+            text-align: center;
+        }
+        nav a {
+            color: #3F51B5;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+        }
+        main {
+            max-width: 700px;
+            margin: 30px auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(63,81,181,0.08);
+            padding: 32px;
+        }
+        section {
+            margin-bottom: 24px;
+        }
+        h2 {
+            color: #3F51B5;
+            margin-top: 0;
+        }
+        footer {
+            background: #e3e6ee;
+            color: #3F51B5;
+            text-align: center;
+            padding: 16px 0;
+            margin-top: 40px;
+        }
+        button {
+            background: #3F51B5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #303F9F;
+        }
+        #greet-msg {
+            margin-top: 16px;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>HTML5 데모 페이지</h1>
+    </header>
+    <nav>
+        <a href="#intro">소개</a>
+        <a href="#features">특징</a>
+        <a href="#contact">문의</a>
+    </nav>
+    <main>
+        <section id="intro">
+            <h2>소개</h2>
+            <p>이 페이지는 HTML5의 주요 태그와 CSS3, 그리고 간단한 자바스크립트 예제를 포함합니다.</p>
+        </section>
+        <section id="features">
+            <h2>HTML5 특징</h2>
+            <ul>
+                <li>&lt;header&gt;, &lt;nav&gt;, &lt;main&gt;, &lt;section&gt;, &lt;footer&gt; 등 시맨틱 태그 사용</li>
+                <li>반응형 디자인을 위한 <code>viewport</code> 메타 태그</li>
+                <li>CSS3를 활용한 스타일링</li>
+                <li>자바스크립트로 동적 기능 추가</li>
+            </ul>
+            <button id="greet-btn">인사하기</button>
+            <div id="greet-msg"></div>
+        </section>
+        <section id="contact">
+            <h2>문의</h2>
+            <form>
+                <label for="email">이메일:</label>
+                <input type="email" id="email" name="email" required>
+                <button type="submit">보내기</button>
+            </form>
+        </section>
+    </main>
+    <footer>
+        &copy; 2025 HTML5 데모. 모든 권리 보유.
+    </footer>
+    <script>
+        document.getElementById('greet-btn').addEventListener('click', function() {
+            document.getElementById('greet-msg').textContent = '안녕하세요! HTML5와 CSS3를 즐겁게 공부하세요 😊';
+        });
+    </script>

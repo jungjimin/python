@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>To-Do List</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="styles/tailwind.css" rel="stylesheet">
+</head>
+<body class="bg-pastel-blue font-sans">
+    <header class="bg-pastel-purple text-white py-6 text-center">
+        <h1 class="text-3xl">To-Do List</h1>
+    </header>
+    <main class="max-w-lg mx-auto bg-white rounded-lg shadow-lg p-6 mt-6">
+        <div class="flex">
+            <input type="text" id="task-input" placeholder="새 작업 추가..." class="flex-grow p-2 border border-gray-300 rounded-l-md">
+            <button id="add-task-btn" class="bg-pastel-green text-white rounded-r-md px-4">추가</button>
+        </div>
+        <ul id="task-list" class="mt-4 list-none p-0"></ul>
+    </main>
+    <script>
+        document.getElementById('add-task-btn').addEventListener('click', function() {
+            const taskInput = document.getElementById('task-input');
+            const taskText = taskInput.value.trim();
+            if (taskText) {
+                const li = document.createElement('li');
+                li.textContent = taskText;
+                li.className = 'bg-pastel-yellow my-2 p-2 rounded flex justify-between items-center';
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '삭제';
+                removeBtn.className = 'bg-pastel-red text-white rounded px-2';
+                removeBtn.addEventListener('click', function() {
+                    li.remove();
+                });
+                li.appendChild(removeBtn);
+                document.getElementById('task-list').appendChild(li);
+                taskInput.value = '';
+            }
+        });
+    </script>
+</body>
+</html>

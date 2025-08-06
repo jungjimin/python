@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .header {
+        @apply bg-pastel-blue text-white py-6 text-center;
+    }
+
+    .main {
+        @apply max-w-lg mx-auto bg-white rounded-lg shadow-lg p-8;
+    }
+
+    .input {
+        @apply w-full p-3 border border-gray-300 rounded-md mb-3;
+    }
+
+    .button {
+        @apply bg-pastel-blue text-white rounded-lg py-2 px-4 text-lg cursor-pointer;
+    }
+
+    .button:hover {
+        @apply bg-pastel-dark-blue;
+    }
+
+    .task-list {
+        @apply list-none p-0;
+    }
+
+    .task-item {
+        @apply bg-pastel-gray my-2 p-3 rounded-md flex justify-between items-center;
+    }
+
+    .remove-btn {
+        @apply bg-pastel-red text-white rounded-md py-1 px-3 cursor-pointer;
+    }
+
+    .remove-btn:hover {
+        @apply bg-pastel-dark-red;
+    }
+}
+
+@layer utilities {
+    .bg-pastel-blue {
+        background-color: #A7C5E0;
+    }
+
+    .bg-pastel-dark-blue {
+        background-color: #6B9BC2;
+    }
+
+    .bg-pastel-gray {
+        background-color: #E3E6EE;
+    }
+
+    .bg-pastel-red {
+        background-color: #F6B93B;
+    }
+
+    .bg-pastel-dark-red {
+        background-color: #D68A2D;
+    }
+}
