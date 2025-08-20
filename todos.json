@@ -1,15 +1,15 @@
 {
     "반영": [
         {
-            "id": 1754454950241,
+            "id": 1755665089331,
             "text": "안녕",
             "completed": false,
             "alarmTime": null
         },
         {
-            "id": 1754454948679,
+            "id": 1755664940707,
             "text": "안녕",
-            "completed": false,
+            "completed": true,
             "alarmTime": null
         }
     ],

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <title>개발자 To-Do List</title>
@@ -19,6 +20,7 @@
             --success-color: #4CAF50;
             --alarm-color: #FFC107;
         }
+
         body {
             font-family: 'Noto Sans KR', sans-serif;
             background-color: var(--background-color);
@@ -26,10 +28,12 @@
             margin: 0;
             padding: 20px;
         }
+
         .main-container {
             max-width: 400px;
             margin: 0 auto;
         }
+
         h1 {
             text-align: center;
             color: var(--primary-color);
@@ -37,11 +41,13 @@
             font-weight: 700;
             font-size: 1.5rem;
         }
+
         .category-container {
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
+
         .category-box {
             background-color: var(--surface-color);
             padding: 15px;
@@ -49,6 +55,7 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             position: relative;
         }
+
         .category-box h2 {
             margin-top: 0;
             color: var(--primary-color);
@@ -58,11 +65,13 @@
             font-weight: 700;
             font-size: 1.2rem;
         }
+
         form {
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
         }
+
         input[type="text"] {
             flex: 1;
             padding: 8px;
@@ -70,6 +79,7 @@
             border-radius: 8px;
             font-size: 14px;
         }
+
         .add-button {
             padding: 8px 15px;
             background-color: var(--primary-color);
@@ -81,14 +91,17 @@
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
+
         .add-button:hover {
             background-color: #4B5CA7;
         }
+
         ul {
             list-style-type: none;
             padding: 0;
             margin: 0;
         }
+
         li {
             background-color: var(--background-color);
             padding: 10px;
@@ -102,22 +115,27 @@
             word-break: break-all;
             position: relative;
         }
+
         li:last-child {
             margin-bottom: 0;
         }
+
         .todo-text {
             flex-grow: 1;
             margin-right: 10px;
         }
+
         .todo-text.completed {
             text-decoration: line-through;
             color: var(--completed-text-color);
         }
+
         .action-buttons {
             display: flex;
             gap: 5px;
             flex-shrink: 0;
         }
+
         .action-buttons button {
             background: none;
             border: none;
@@ -129,19 +147,24 @@
             gap: 4px;
             transition: transform 0.2s ease;
         }
+
         .action-buttons button:hover {
             transform: scale(1.1);
         }
+
         .complete-button {
             color: var(--success-color);
         }
+
         .delete-button {
             color: var(--alert-color);
         }
+
         .alarm-button {
             color: var(--alarm-color);
             position: relative;
         }
+
         .alarm-options {
             position: absolute;
             top: 0;
@@ -156,6 +179,7 @@
             padding: 5px;
             z-index: 10;
         }
+
         .alarm-options button {
             background: none;
             border: 1px solid var(--border-color);
@@ -164,15 +188,18 @@
             font-size: 12px;
             cursor: pointer;
         }
+
         .alarm-options button:hover {
             background-color: var(--background-color);
         }
+
         .alarm-timer {
             font-size: 13px;
             font-weight: 700;
             color: var(--alarm-color);
             white-space: nowrap;
         }
+
         #notifications-area {
             position: fixed;
             bottom: 20px;
@@ -183,6 +210,7 @@
             flex-direction: column;
             gap: 10px;
         }
+
         .notification-item {
             background-color: var(--primary-color);
             color: white;
@@ -194,9 +222,11 @@
             justify-content: space-between;
             animation: fadeIn 0.5s ease-in-out;
         }
+
         .notification-item span {
             flex-grow: 1;
         }
+
         .notification-item button {
             background: none;
             border: none;
@@ -205,12 +235,21 @@
             cursor: pointer;
             padding-left: 10px;
         }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="main-container">
         <h1>나만의 To-Do List 📝</h1>
@@ -268,7 +307,7 @@
 
         function createTodoElement(item, category, index) {
             const todoItem = document.createElement('li');
-            
+
             const textSpan = document.createElement('span');
             textSpan.classList.add('todo-text');
             textSpan.textContent = item.text;
@@ -278,7 +317,7 @@
 
             const actionDiv = document.createElement('div');
             actionDiv.classList.add('action-buttons');
-            
+
             const completeButton = document.createElement('button');
             completeButton.innerHTML = `<span class="material-icons">done</span>`;
             completeButton.title = "완료";
@@ -311,7 +350,7 @@
             deleteButton.addEventListener('click', () => {
                 deleteTodo(category, index);
             });
-            
+
             actionDiv.appendChild(completeButton);
             actionDiv.appendChild(deleteButton);
             todoItem.appendChild(textSpan);
@@ -390,7 +429,7 @@
                 loadTodos();
             }
         }
-        
+
         function scheduleAlarm(taskText, alarmTime, category, index) {
             const now = new Date().getTime();
             const alarmDate = new Date(alarmTime).getTime();
@@ -404,12 +443,12 @@
             if (alarmIntervals[`${category}-${index}`]) {
                 clearInterval(alarmIntervals[`${category}-${index}`]);
             }
-            
+
             const timerId = setInterval(() => {
                 const remaining = alarmDate - new Date().getTime();
                 const minutes = Math.floor(remaining / 60000);
                 const seconds = Math.floor((remaining % 60000) / 1000);
-                
+
                 const timerElement = document.querySelector(`#${category}-list > li:nth-child(${index + 1}) .alarm-timer`);
                 if (timerElement) {
                     if (minutes > 0) {
@@ -428,15 +467,44 @@
             alarmIntervals[`${category}-${index}`] = timerId;
         }
 
+        // function showNotification(message, category, index) {
+        //     const notificationDiv = document.createElement('div');
+        //     notificationDiv.classList.add('notification-item');
+        //     notificationDiv.innerHTML = `
+        //         <span>🚨 알림: ${message}</span>
+        //         <button onclick="this.parentElement.remove()">×</button>
+        //     `;
+        //     notificationArea.prepend(notificationDiv);
+
+        //     const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
+        //     if (storedTodos && storedTodos[category] && storedTodos[category][index]) {
+        //         storedTodos[category][index].alarmTime = null;
+        //         localStorage.setItem('todos_db', JSON.stringify(storedTodos));
+        //         loadTodos();
+        //     }
+        // }
         function showNotification(message, category, index) {
-            const notificationDiv = document.createElement('div');
-            notificationDiv.classList.add('notification-item');
-            notificationDiv.innerHTML = `
-                <span>🚨 알림: ${message}</span>
-                <button onclick="this.parentElement.remove()">×</button>
-            `;
-            notificationArea.prepend(notificationDiv);
-            
+            // Notification 권한 요청
+            if (Notification.permission === "granted") {
+                // 알림 생성
+                const notification = new Notification("🚨 알림", {
+                    body: message,
+                    icon: "/path/to/icon.png"  // 아이콘 있으면 지정
+                });
+
+                notification.onclick = () => {
+                    window.focus();
+                    // 필요한 동작 추가 가능 (예: 특정 카테고리 보여주기)
+                };
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        showNotification(message, category, index);
+                    }
+                });
+            }
+
+            // 기존 로컬스토리지 업데이트 부분
             const storedTodos = JSON.parse(localStorage.getItem('todos_db'));
             if (storedTodos && storedTodos[category] && storedTodos[category][index]) {
                 storedTodos[category][index].alarmTime = null;
@@ -445,13 +513,15 @@
             }
         }
 
+
+
         document.querySelectorAll('.todo-form').forEach(form => {
-            form.addEventListener('submit', function(event) {
+            form.addEventListener('submit', function (event) {
                 event.preventDefault();
                 const category = this.dataset.category;
                 const taskInput = this.querySelector('input[name="task"]');
                 const task = taskInput.value;
-                
+
                 if (!task) return;
 
                 addTodo(category, task);
@@ -462,4 +532,5 @@
         loadTodos();
     </script>
 </body>
+
 </html>

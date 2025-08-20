@@ -1,432 +1,437 @@
 import sys
-import json
-import os
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QLabel, QListWidget, QListWidgetItem,
-    QMessageBox, QDialog, QFrame, QSizePolicy, QGraphicsDropShadowEffect
+import sqlite3
+from plyer import notification
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton,
+    QLineEdit, QHBoxLayout, QListWidget, QListWidgetItem, QMenu, QSizePolicy
 )
-from PyQt6.QtCore import Qt, QTimer, QDateTime, QObject, pyqtSignal
-from PyQt6.QtGui import QFont, QFontDatabase, QFontMetrics, QColor
+from PyQt5.QtCore import Qt, QTimer
+import time
 
-# 데이터 파일명
-DATA_FILE = "todos.json"
 
 class TodoApp(QMainWindow):
-    notification_signal = pyqtSignal(str, str)
-
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("To-Do List 📝")
-        self.setFixedSize(480, 700)
+        self.setWindowTitle("Todo List")
+        self.setGeometry(100, 100, 700, 650)
+        self.setMinimumSize(400, 300)
 
-        # 폰트 로드: NotoSansKR-VariableFont_wght.ttf 파일이 같은 폴더에 있어야 합니다.
-        if QFontDatabase.addApplicationFont("NotoSansKR-VariableFont_wght.ttf") == -1:
-            print("폰트 파일 'NotoSansKR-VariableFont_wght.ttf'을 찾을 수 없습니다. 기본 폰트를 사용합니다.")
-        self.setFont(QFont("Noto Sans KR"))
+        self.conn = sqlite3.connect("todos.db")
+        self.c = self.conn.cursor()
+        self.c.execute("""
+            CREATE TABLE IF NOT EXISTS todos (
+                id INTEGER PRIMARY KEY,
+                category TEXT,
+                task TEXT,
+                completed BOOLEAN,
+                progress INTEGER DEFAULT 0
+            )
+        """)
+        self.conn.commit()
 
-        # 아이콘 폰트가 깨지는 문제를 해결하기 위해 유니코드 문자로 직접 지정
-        self.icon_map = {
-            "done": "✔",
-            "delete": "🗑",
-            "alarm": "⏰",
-            "add": "➕"
-        }
+        self.categories = {}
+        self.task_timers = {}
 
-        self.main_widget = QWidget()
-        self.setCentralWidget(self.main_widget)
-        self.main_layout = QVBoxLayout()
-        self.main_layout.setContentsMargins(20, 20, 20, 20)
-        self.main_widget.setLayout(self.main_layout)
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.layout = QVBoxLayout(self.central_widget)
 
-        self.todos = self.load_todos()
-        self.alarms = {}
-        
-        self.setup_ui()
+        self.initUI()
         self.style_ui()
-        self.start_alarms()
-        
-        self.notification_signal.connect(self.show_notification)
 
-    def setup_ui(self):
-        title_label = QLabel("To-Do List 📝")
-        title_label.setObjectName("title_label")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.main_layout.addWidget(title_label)
+        # 기본 카테고리 생성
+        for category in ["현안", "기타", "Today"]:
+            if category not in self.categories:
+                self.create_category_section(category)
 
-        self.categories = ["반영", "문의", "기타"]
-        self.list_widgets = {}
+    def initUI(self):
+        header_widget = QWidget()
+        header_widget.setObjectName("header_widget")
+        header_layout = QVBoxLayout(header_widget)
 
-        for category in self.categories:
-            self.create_category_box(category)
-            
-    def apply_shadow(self, widget, color, blur_radius=12, x_offset=0, y_offset=4):
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setColor(QColor(color))
-        shadow.setBlurRadius(blur_radius)
-        shadow.setOffset(x_offset, y_offset)
-        widget.setGraphicsEffect(shadow)
+        title = QLabel("📌 Todo List")
+        self.stats_label = QLabel("완료된 할 일: 0 / 전체: 0")
+        self.stats_label.setObjectName("stats_label")
+
+        header_layout.addWidget(title)
+        header_layout.addWidget(self.stats_label)
+        self.layout.addWidget(header_widget)
+
+        self.load_from_db()
 
     def style_ui(self):
+        """라이트 모드 스타일"""
         self.setStyleSheet("""
             QWidget {
-                font-family: 'Noto Sans KR';
-                background-color: #FAFAFA;
-                color: #212529;
+                font-family: 'Segoe UI', 'Noto Sans KR', sans-serif;
+                background-color: #FDFDFD;
+                color: #222222;
             }
-            QMainWindow {
-                background-color: #FAFAFA;
-            }
-            QLabel#title_label {
-                color: #3F51B5;
-                font-size: 26pt;
-                font-weight: 700;
-                margin-bottom: 25px;
-            }
-            .category-box {
-                background-color: #FFFFFF;
-                padding: 18px;
+            QMainWindow { background-color: #FFFFFF; }
+            #header_widget {
+                background-color: #F5F7FB;
                 border-radius: 16px;
+                padding: 16px;
+                border: 1px solid #DDDDDD;
+            }
+            /* 카테고리 섹션 스타일 추가 */
+            QWidget#category_section {
+                background-color: #FFFFFF;
+                border-radius: 12px;
+                padding: 12px;
                 border: 1px solid #E0E0E0;
+                margin-top: 10px; /* 섹션 상단 여백 추가 */
+            }                           
+            QLabel#stats_label {
+                font-size: 9pt;
+                font-weight: 500;
+                background-color: #E6F0FF;
+                padding: 6px 12px;
+                border-radius: 12px;
             }
-            .category-box QLabel {
-                color: #3F51B5;
-                font-size: 18pt;
-                font-weight: bold;
-                padding-bottom: 8px;
-                margin-bottom: 16px;
-                border-bottom: 2px solid #F0F0F0;
-            }
-            QLineEdit {
-                padding: 10px;
-                border: 1px solid #DADCE0;
-                border-radius: 10px;
-                font-size: 12pt;
-                background: #FFFFFF;
-            }
-            #add-icon-button {
-                background-color: #3F51B5;
-                border: none;
-                border-radius: 8px;
-                color: white;
-                font-size: 16pt;
-                width: 36px;
-                height: 36px;
-            }
-            #add-icon-button:hover {
-                background-color: #303F9F;
-            }
-
             QListWidget {
                 border: none;
-                background-color: #FFFFFF;
-                padding-top: 12px;
-            }
-
-            QListWidget::item {
                 background-color: transparent;
                 padding: 0;
             }
-
-            .todo-item-widget {
-                background-color: #FDFDFD;
+            .todo-item {
+                background-color: #FAFAFA;
                 border: 1px solid #E0E0E0;
-                border-radius: 10px;
-                margin-bottom: 10px;
+                border-radius: 8px;
+                margin: 4px;
+                padding: 8px;
             }
-
-            .todo-text {
-                font-size: 13pt;
-                padding: 0 8px;
-                margin-right: 10px;
-            }
-
-            #action-button {
-                background: transparent;
-                border: none;
-                font-size: 16pt;
-                padding: 0 4px;
-                margin: 0;
-            }
-
-            #complete-button {
-                color: #4CAF50;
-            }
-
-            #delete-button {
-                color: #F44336;
-            }
-
-            #alarm-button {
-                color: #FFC107;
-            }
-
-            #alarm-timer {
-                font-size: 11pt;
-                font-weight: 600;
-                color: #FF9800;
-                padding-right: 5px;
-            }
-
             QLabel[completed="true"] {
                 text-decoration: line-through;
-                color: #9E9E9E;
+                color: #888888;
+            }
+            QPushButton {
+                background: transparent;
+                border: none;
+                font-size: 10pt;
+                padding: 4px 6px;
+                border-radius: 6px;
+                min-width: 24px;
+            }
+            QPushButton:hover {
+                background-color: #E6F0FF;
+                color: #2A6BE3;
+            }
+            QPushButton[class="complete-button"] { color: #28A745; }
+            QPushButton[class="delete-button"] { color: #E53935; }
+            QPushButton[class="alarm-button"] { color: #FF9800; }
+            QLabel[class="alarm-timer"] {
+                font-size: 9pt;
+                color: #FF9800;
+                background-color: #FFF3E0;
+                padding: 4px 8px;
+                border-radius: 8px;
+            }
+            QLabel[class="progress-display"] {
+                font-size: 9pt;
+                padding: 4px 8px;
+                border-radius: 8px;
+                border: 1px solid #CCCCCC;
+                font-family: 'Consolas', 'Monaco', monospace;
+                max-width: 200px;
+            }
+            QLineEdit[class="progress-input"] {
+                max-width: 50px;
+                border: 1px solid #BBBBBB;
+                border-radius: 6px;
+                padding: 4px;
+                font-size: 9pt;
+                background-color: #FFFFFF;
             }
         """)
 
-    def create_category_box(self, category):
-        category_box = QFrame()
-        category_box.setObjectName("category-box")
-        category_box_layout = QVBoxLayout()
-        category_box.setLayout(category_box_layout)
-        self.main_layout.addWidget(category_box)
-        self.apply_shadow(category_box, "#000000", 12, 0, 4)
+    def load_from_db(self):
+        category_order = ["현안", "기타", "Today"]
+        self.c.execute("SELECT * FROM todos ORDER BY category, id")
+        todos = self.c.fetchall()
 
-        category_label = QLabel(category)
-        category_label.setObjectName("category_label")
-        category_box_layout.addWidget(category_label)
+        for category in category_order:
+            if category not in self.categories:
+                self.create_category_section(category)
+
+        for todo in todos:
+            _, category, task, completed, progress = todo
+            if category not in self.categories:
+                self.create_category_section(category)
+            self.add_task(category, task, completed, progress, save_to_db=False)
+        self.update_stats()
+
+    def create_category_section(self, category_name):
+        section_widget = QWidget()
+        # 이 부분을 추가하여 스타일시트에서 참조할 수 있게 합니다.
+        section_widget.setObjectName("category_section") 
+        section_layout = QVBoxLayout(section_widget)        
+
+        header = QLabel(category_name)
+
+        task_input = QLineEdit()
+        task_input.setPlaceholderText(f"{category_name} 할 일 입력")
+        task_input.returnPressed.connect(lambda: self.add_task(category_name, task_input.text()))
+
+        add_task_button = QPushButton("+")
+        add_task_button.clicked.connect(lambda: self.add_task(category_name, task_input.text()))
 
         input_layout = QHBoxLayout()
-        task_input = QLineEdit()
-        task_input.setPlaceholderText("할 일 입력")
-        
-        add_button = QPushButton(self.icon_map["add"])
-        add_button.setObjectName("add-icon-button")
-
         input_layout.addWidget(task_input)
-        input_layout.addWidget(add_button)
-        category_box_layout.addLayout(input_layout)
+        input_layout.addWidget(add_task_button)
 
-        todo_list = QListWidget()
-        todo_list.setObjectName("todo_list")
-        category_box_layout.addWidget(todo_list)
-        self.list_widgets[category] = todo_list
-        
-        add_button.clicked.connect(lambda: self.add_todo(category, task_input))
-        task_input.returnPressed.connect(lambda: self.add_todo(category, task_input))
-        
-        self.update_list(category)
+        task_list = QListWidget()
 
-    def create_todo_item_widget(self, item_data, category, todo_id):
-        widget = QWidget()
-        widget.setObjectName("todo-item-widget")
-        
-        layout = QHBoxLayout()
-        layout.setContentsMargins(15, 10, 15, 10)
-        widget.setLayout(layout)
+        section_layout.addWidget(header)
+        section_layout.addLayout(input_layout)
+        section_layout.addWidget(task_list)
 
-        text_label = QLabel(item_data['text'])
-        text_label.setObjectName("todo-text")
-        text_label.setWordWrap(True)
-        text_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        
-        if item_data['completed']:
-            text_label.setProperty("completed", True)
-        else:
-            text_label.setProperty("completed", False)
-        
-        layout.addWidget(text_label)
+        self.layout.addWidget(section_widget)
 
-        action_layout = QHBoxLayout()
-        action_layout.setSpacing(5)
-        
-        # 버튼의 투명 배경은 스타일시트로 처리했기 때문에 여기서는 제거
-        if item_data.get('alarmTime') and not item_data['completed']:
-            timer_label = QLabel()
-            timer_label.setObjectName("alarm-timer")
-            action_layout.addWidget(timer_label)
-        else:
-            alarm_button = QPushButton(self.icon_map["alarm"])
-            alarm_button.setObjectName("alarm-button")
-            alarm_button.clicked.connect(lambda: self.show_alarm_options(category, todo_id))
-            alarm_button.setHidden(item_data['completed'])
-            action_layout.addWidget(alarm_button)
-
-        complete_button = QPushButton(self.icon_map["done"])
-        complete_button.setObjectName("complete-button")
-        complete_button.clicked.connect(lambda: self.toggle_complete(category, todo_id))
-        complete_button.setHidden(item_data['completed'])
-        action_layout.addWidget(complete_button)
-        
-        delete_button = QPushButton(self.icon_map["delete"])
-        delete_button.setObjectName("delete-button")
-        delete_button.clicked.connect(lambda: self.delete_todo(category, todo_id))
-        action_layout.addWidget(delete_button)
-        
-        layout.addLayout(action_layout)
-
-        return widget
-
-    def load_todos(self):
-        try:
-            if os.path.exists(DATA_FILE):
-                with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    if not data or not isinstance(data, dict):
-                        return {category: [] for category in ["반영", "문의", "기타"]}
-                    return data
-            else:
-                return {category: [] for category in ["반영", "문의", "기타"]}
-        except (IOError, json.JSONDecodeError):
-            return {category: [] for category in ["반영", "문의", "기타"]}
-            
-    def save_todos(self):
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.todos, f, ensure_ascii=False, indent=4)
-            
-    def add_todo(self, category, input_widget):
-        task_text = input_widget.text().strip()
-        if not task_text:
-            return
-        
-        new_todo = {
-            'id': QDateTime.currentMSecsSinceEpoch(),
-            'text': task_text, 
-            'completed': False, 
-            'alarmTime': None
+        self.categories[category_name] = {
+            "task_input": task_input,
+            "task_list": task_list
         }
-        self.todos[category].insert(0, new_todo)
-        self.save_todos()
-        self.update_list(category)
-        input_widget.clear()
 
-    def update_list(self, category):
-        list_widget = self.list_widgets[category]
-        list_widget.clear()
-        
-        for item_data in self.todos[category]:
-            item = QListWidgetItem(list_widget)
-            custom_widget = self.create_todo_item_widget(item_data, category, item_data['id'])
-            
-            # 위젯의 내용에 맞춰 아이템의 높이를 조절
-            item.setSizeHint(custom_widget.sizeHint())
-            
-            list_widget.addItem(item)
-            list_widget.setItemWidget(item, custom_widget)
+    def add_task(self, category, task_text, completed=False, progress=0, save_to_db=True):
+        if not task_text.strip():
+            return
 
-    def find_todo_item(self, category, todo_id):
-        for item in self.todos.get(category, []):
-            if item['id'] == todo_id:
-                return item
-        return None
+        item = QListWidgetItem()
+        item_widget = QWidget()
+        item_widget.setObjectName("todo-item")
+        layout = QHBoxLayout(item_widget)
+        layout.setContentsMargins(6, 2, 6, 2)
+        layout.setSpacing(6)
 
-    def find_todo_index(self, category, todo_id):
-        for i, item in enumerate(self.todos.get(category, [])):
-            if item['id'] == todo_id:
-                return i
-        return -1
+        label = QLabel(task_text)
+        label.setProperty("completed", str(completed).lower())
+        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        if completed:
+            label.setStyleSheet("text-decoration: line-through; color: gray;")
 
-    def toggle_complete(self, category, todo_id):
-        item = self.find_todo_item(category, todo_id)
-        if item:
-            item['completed'] = True
-            item['alarmTime'] = None
-            if todo_id in self.alarms:
-                self.alarms[todo_id]['timer'].stop()
-                del self.alarms[todo_id]
-            self.save_todos()
-            self.update_list(category)
+        # 진행률 표시
+        progress_display = QLabel()
+        progress_display.setProperty("class", "progress-display")
+        progress_display.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        self.update_progress_display(progress_display, progress)
+        progress_display.mouseDoubleClickEvent = lambda event: self.start_progress_edit(progress_input, progress_display)
 
-    def delete_todo(self, category, todo_id):
-        index = self.find_todo_index(category, todo_id)
-        if index != -1:
-            del self.todos[category][index]
-            if todo_id in self.alarms:
-                self.alarms[todo_id]['timer'].stop()
-                del self.alarms[todo_id]
-            self.save_todos()
-            self.update_list(category)
+        progress_input = QLineEdit(str(progress))
+        progress_input.setProperty("class", "progress-input")
+        progress_input.hide()
+        progress_input.editingFinished.connect(
+            lambda: self.finish_progress_edit(task_text, category, progress_input, progress_display)
+        )
+        progress_input.returnPressed.connect(progress_input.clearFocus)
 
-    def show_alarm_options(self, category, todo_id):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("알림 설정")
-        dialog.setFixedSize(200, 150)
-        
-        layout = QVBoxLayout()
-        dialog.setLayout(layout)
-        
-        label = QLabel("알림 시간을 선택하세요.")
-        label.setStyleSheet("font-size: 11pt; margin-bottom: 10px;")
+        complete_button = QPushButton("✓")
+        complete_button.setProperty("class", "complete-button")
+
+        delete_button = QPushButton("🗑")
+        delete_button.setProperty("class", "delete-button")
+
+        alarm_button = QPushButton("⏰")
+        alarm_button.setProperty("class", "alarm-button")
+
+        timer_label = QLabel("")
+        timer_label.setProperty("class", "alarm-timer")
+
         layout.addWidget(label)
+        layout.addWidget(progress_display)
+        layout.addWidget(progress_input)
+        layout.addWidget(timer_label)
+        layout.addSpacing(10)
 
-        times = [("5초 뒤", 5), ("30분 뒤", 1800), ("1시간 뒤", 3600)]
-        
-        for text, seconds in times:
-            btn = QPushButton(text)
-            btn.clicked.connect(lambda checked, s=seconds: self.set_alarm(category, todo_id, s, dialog))
-            layout.addWidget(btn)
-        
-        dialog.exec()
+        # 버튼 순서: 알림 → 완료 → 삭제
+        if category != "현안":
+            layout.addWidget(alarm_button)
+        layout.addWidget(complete_button)
+        layout.addWidget(delete_button)
 
-    def set_alarm(self, category, todo_id, seconds, dialog):
-        item = self.find_todo_item(category, todo_id)
-        if item:
-            alarm_time = QDateTime.currentDateTime().addSecs(seconds)
-            item['alarmTime'] = alarm_time.toString(Qt.DateFormat.ISODate)
-            self.save_todos()
-            self.update_list(category)
-            self.start_alarms_for_item(category, todo_id)
-            dialog.accept()
+        item.setSizeHint(item_widget.sizeHint())
+        self.categories[category]["task_list"].addItem(item)
+        self.categories[category]["task_list"].setItemWidget(item, item_widget)
 
-    def start_alarms(self):
-        for category in self.categories:
-            for item_data in self.todos.get(category, []):
-                if item_data.get('alarmTime') and not item_data['completed']:
-                    self.start_alarms_for_item(category, item_data['id'])
+        if save_to_db:
+            self.c.execute(
+                "INSERT INTO todos (category, task, completed, progress) VALUES (?, ?, ?, ?)",
+                (category, task_text, completed, int(progress))
+            )
+            self.conn.commit()
 
-    def start_alarms_for_item(self, category, todo_id):
-        if todo_id in self.alarms:
-            self.alarms[todo_id]['timer'].stop()
-            del self.alarms[todo_id]
+        self.update_stats()
 
-        timer = QTimer(self)
-        timer.timeout.connect(lambda: self.update_alarm_display(category, todo_id))
-        self.alarms[todo_id] = {'timer': timer}
-        timer.start(1000)
+        complete_button.clicked.connect(lambda: self.toggle_complete(label, task_text, category))
+        delete_button.clicked.connect(lambda: self.delete_task(item, task_text, category))
+        if category != "현안":
+            alarm_button.clicked.connect(lambda: self.show_alarm_menu(alarm_button, task_text, timer_label))
 
-    def update_alarm_display(self, category, todo_id):
-        item_data = self.find_todo_item(category, todo_id)
-        if not item_data or item_data['completed']:
-            if todo_id in self.alarms:
-                self.alarms[todo_id]['timer'].stop()
-                del self.alarms[todo_id]
-            self.update_list(category)
+        if save_to_db:
+            self.categories[category]["task_input"].clear()
+
+    def update_progress_display(self, display_label, progress):
+        window_width = self.width()
+        total_bars = 20 if window_width >= 650 else 15 if window_width >= 500 else 10
+        filled_bars = int((progress / 100) * total_bars)
+        empty_bars = total_bars - filled_bars
+        progress_bar = "█" * filled_bars + "░" * empty_bars
+        display_text = f"{progress_bar} ({progress}%)"
+        display_label.setText(display_text)
+
+        if progress >= 100:
+            color = "#28A745"
+            bg_color = "#D4EDDA"
+        elif progress >= 75:
+            color = "#2A6BE3"
+            bg_color = "#E6F0FF"
+        elif progress >= 50:
+            color = "#FF9800"
+            bg_color = "#FFF3E0"
+        elif progress >= 25:
+            color = "#FFC107"
+            bg_color = "#FFF8E1"
+        else:
+            color = "#DC3545"
+            bg_color = "#F8D7DA"
+
+        display_label.setStyleSheet(f"""
+            QLabel[class="progress-display"] {{
+                font-size: 9pt;
+                color: {color};
+                background-color: {bg_color};
+                padding: 4px 8px;
+                border-radius: 8px;
+                border: 1px solid {color}40;
+                font-family: 'Consolas', 'Monaco', monospace;
+                max-width: 200px;
+            }}
+            QLabel[class="progress-display"]:hover {{
+                opacity: 0.8;
+            }}
+        """)
+
+    def start_progress_edit(self, input_field, display_label):
+        current_text = display_label.text()
+        if "(" in current_text and "%" in current_text:
+            progress_str = current_text.split("(")[1].split("%")[0]
+            input_field.setText(progress_str)
+        display_label.hide()
+        input_field.show()
+        input_field.setFocus()
+        input_field.selectAll()
+
+    def finish_progress_edit(self, task_text, category, input_field, display_label):
+        try:
+            progress = int(input_field.text())
+            progress = max(0, min(100, progress))
+            self.c.execute(
+                "UPDATE todos SET progress=? WHERE task=? AND category=?",
+                (progress, task_text, category)
+            )
+            self.conn.commit()
+            self.update_progress_display(display_label, progress)
+        except ValueError:
+            pass
+        input_field.hide()
+        display_label.show()
+
+    # 기존 알람, 완료, 삭제 기능 그대로 유지
+    def toggle_complete(self, label, task_text, category):
+        completed = label.property("completed") == "false"
+        label.setProperty("completed", str(completed).lower())
+        label.setStyleSheet("text-decoration: line-through; color: gray;" if completed else "")
+        self.c.execute(
+            "UPDATE todos SET completed=? WHERE task=? AND category=?",
+            (completed, task_text, category)
+        )
+        self.conn.commit()
+        self.update_stats()
+
+    def delete_task(self, item, task_text, category):
+        if task_text in self.task_timers:
+            timer_info = self.task_timers[task_text]
+            timer_info['timer'].stop()
+            if 'update_timer' in timer_info:
+                timer_info['update_timer'].stop()
+            del self.task_timers[task_text]
+        self.c.execute("DELETE FROM todos WHERE task=? AND category=?", (task_text, category))
+        self.conn.commit()
+        self.categories[category]["task_list"].takeItem(
+            self.categories[category]["task_list"].row(item)
+        )
+        self.update_stats()
+
+    def show_alarm_menu(self, button, task_text, timer_label):
+        menu = QMenu()
+        action_5s = menu.addAction("5초 후")
+        action_30m = menu.addAction("30분 후")
+        action_1h = menu.addAction("1시간 후")
+        action = menu.exec_(button.mapToGlobal(button.rect().bottomLeft()))
+        if action == action_5s:
+            self.set_alarm(task_text, 5, timer_label)
+        elif action == action_30m:
+            self.set_alarm(task_text, 30 * 60, timer_label)
+        elif action == action_1h:
+            self.set_alarm(task_text, 60 * 60, timer_label)
+
+    def set_alarm(self, task_text, seconds, timer_label):
+        if task_text in self.task_timers:
+            self.task_timers[task_text]['timer'].stop()
+        end_time = time.time() + seconds
+        timer = QTimer()
+        self.task_timers[task_text] = {
+            'timer': timer,
+            'end_time': end_time,
+            'label': timer_label
+        }
+        update_timer = QTimer()
+        update_timer.timeout.connect(lambda: self.update_timer_display(task_text))
+        update_timer.start(1000)
+        self.task_timers[task_text]['update_timer'] = update_timer
+        timer.timeout.connect(lambda: self.trigger_alarm(task_text))
+        timer.setSingleShot(True)
+        timer.start(seconds * 1000)
+        self.update_timer_display(task_text)
+
+    def update_timer_display(self, task_text):
+        if task_text not in self.task_timers:
             return
-
-        alarm_time = QDateTime.fromString(item_data['alarmTime'], Qt.DateFormat.ISODate)
-        if not alarm_time.isValid():
+        timer_info = self.task_timers[task_text]
+        remaining = timer_info['end_time'] - time.time()
+        if remaining <= 0:
+            timer_info['label'].setText("")
+            if 'update_timer' in timer_info:
+                timer_info['update_timer'].stop()
             return
+        minutes = int(remaining // 60)
+        seconds = int(remaining % 60)
+        time_str = f"{minutes}m {seconds}s" if remaining >= 60 else f"{seconds}s"
+        timer_info['label'].setText(time_str)
+        timer_info['label'].show()
 
-        remaining_seconds = QDateTime.currentDateTime().secsTo(alarm_time)
+    def trigger_alarm(self, task_text):
+        notification.notify(
+            title="할 일 알림",
+            message=f"⏰ {task_text}",
+            timeout=10
+        )
+        if task_text in self.task_timers:
+            timer_info = self.task_timers[task_text]
+            timer_info['label'].setText("")
+            if 'update_timer' in timer_info:
+                timer_info['update_timer'].stop()
+            del self.task_timers[task_text]       
 
-        if remaining_seconds <= 0:
-            self.notification_signal.emit(item_data['text'], category)
-            item_data['alarmTime'] = None
-            self.save_todos()
-            self.update_list(category)
-            return
+    def update_stats(self):
+        self.c.execute("SELECT COUNT(*), SUM(completed) FROM todos")
+        total, completed = self.c.fetchone()
+        completed = completed or 0
+        self.stats_label.setText(f"완료된 할 일: {completed} / 전체: {total}")
 
-        minutes, seconds = divmod(remaining_seconds, 60)
-        time_text = f"{minutes}분 {seconds}초" if minutes > 0 else f"{seconds}초"
-
-        list_widget = self.list_widgets[category]
-        index = self.find_todo_index(category, todo_id)
-        if index != -1:
-            item_widget = list_widget.itemWidget(list_widget.item(index))
-            if item_widget:
-                timer_label = item_widget.findChild(QLabel, "alarm-timer")
-                if timer_label:
-                    timer_label.setText(time_text)
-                
-    def show_notification(self, message, category):
-        msg_box = QMessageBox()
-        msg_box.setWindowTitle("할 일 알림")
-        msg_box.setText(f"🚨 **알림:** {message}")
-        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        msg_box.exec()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = TodoApp()
     window.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
